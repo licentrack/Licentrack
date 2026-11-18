@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Licentrack : votre espace</title>
+<meta name="robots" content="noindex">
+<style>
+:root{--bg:#faf8f3;--ink:#14231e;--mut:#5b6862;--card:#fff;--line:#e3ded2;--g:#14342b;--gt:#fff;--o:#b45309;--ob:#fdf0dc;--r:#b91c1c;--rb:#fde8e8;--ok:#166534;--okb:#e3f3e7}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1714;--ink:#f1eee6;--mut:#a3aea8;--card:#17211d;--line:#2a3832;--g:#d9efe3;--gt:#0f1714;--o:#f5b45e;--ob:#3a2a12;--r:#f59a9a;--rb:#3a1717;--ok:#8fd6a3;--okb:#14301c}}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2,h3{font-family:Georgia,"Times New Roman",serif;line-height:1.15;margin:0 0 .4em}
+h1{font-size:1.7rem}h2{font-size:1.3rem;margin-top:1.4em}h3{font-size:1.05rem}
+.w{max-width:760px;margin:0 auto;padding:0 16px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-family:Georgia,serif;font-weight:700;font-size:1.2rem}
+.sub{color:var(--mut);font-size:.9rem}
+nav{display:flex;gap:6px;margin:14px 0}
+nav button{flex:1;padding:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+nav button.on{background:var(--g);color:var(--gt);border-color:var(--g)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+.big{font-family:Georgia,serif;font-size:2.2rem;color:var(--g);margin:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+.stat b{display:block;font-family:Georgia,serif;font-size:1.6rem}
+.stat span{font-size:.85rem;color:var(--mut)}
+label{display:block;font-weight:600;font-size:.9rem;margin:10px 0 4px}
+input,select{width:100%;padding:12px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:46px}
+.btn{display:inline-block;padding:12px 18px;border:0;border-radius:10px;background:var(--g);color:var(--gt);font:inherit;font-weight:700;cursor:pointer;min-height:46px}
+.btn.sec{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:8px 12px;min-height:38px;font-size:.9rem}
+.btn.danger{background:transparent;color:var(--r);border:1px solid var(--line)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.alert{border-radius:10px;padding:10px 12px;margin:8px 0;font-size:.95rem}
+.alert.o{background:var(--ob);color:var(--o)}
+.alert.r{background:var(--rb);color:var(--r)}
+.alert.ok{background:var(--okb);color:var(--ok)}
+.pill{display:inline-block;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
+.pill.o{background:var(--ob);color:var(--o)}.pill.r{background:var(--rb);color:var(--r)}
+.msg{padding:10px 12px;border-radius:10px;background:var(--okb);color:var(--ok);margin:10px 0}
+.msg.err{background:var(--rb);color:var(--r)}
+details{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}
+summary{cursor:pointer;font-weight:600;min-height:32px}
+.acc{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chk{display:flex;gap:8px;align-items:center;font-weight:400;margin:10px 0}
+.chk input{width:auto;min-height:0}
+.empty{color:var(--mut);text-align:center;padding:24px 8px}
+.foot{font-size:.8rem;color:var(--mut);margin-top:30px;text-align:center}
+input[type=date],input[type=file]{display:block;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none}
+a.btn{text-decoration:none;text-align:center}
+</style>
+</head>
+<body>
+<div class="w" id="app"><p class="empty">Chargement…</p></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://xayjaeyfefyuvurxzupx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_cU2H1ds83HnRDmQfjNdsuQ_R7-0KSYn';
+const UNUSED_DAYS = 60, RENEWAL_DAYS = 45;
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const app = document.getElementById('app');
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (cents, d = 0) => (cents / 100).toLocaleString('fr-FR', {style:'currency', currency:'EUR', minimumFractionDigits:d, maximumFractionDigits:d});
+const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('fr-FR') : '–';
+const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const daysBetween = (d) => Math.round((today0() - new Date(d + 'T00:00:00')) / 86400000);
+
+const STRIPE_LINK = 'https://buy.stripe.com/3cIbJ1aIg5l0bxP1fzfAc00';
+const S = { user:null, company:null, access:false, tools:[], accounts:[], tab:'dash', mode:'login', msg:null, err:null, editTool:null, showToolForm:false, showImport:false, loading:true };
+
+/* ---------- calculs ---------- */
+const annual = t => t.period === 'yearly' ? t.price_cents : t.price_cents * 12;
+const perSeat = t => Math.round(annual(t) / Math.max(t.seats, 1));
+function isUnused(a){
+  if (a.left_company) return true;
+  if (!a.last_used_at) return true;
+  return daysBetween(a.last_used_at) > UNUSED_DAYS;
+}
+function analyse(){
+  const total = S.tools.reduce((s,t) => s + annual(t), 0);
+  const toolById = Object.fromEntries(S.tools.map(t => [t.id, t]));
+  const unused = S.accounts.filter(a => toolById[a.tool_id] && isUnused(a));
+  const waste = unused.reduce((s,a) => s + perSeat(toolById[a.tool_id]), 0);
+  const groups = {};
+  S.tools.forEach(t => { const k = (t.category || '').trim().toLowerCase(); if (k) (groups[k] = groups[k] || []).push(t); });
+  const dups = Object.values(groups).filter(g => g.length > 1);
+  const renewals = S.tools.filter(t => t.renewal_date).map(t => ({t, days: -daysBetween(t.renewal_date)}))
+    .filter(r => r.days >= 0 && r.days <= RENEWAL_DAYS).sort((a,b) => a.days - b.days);
+  return { total, unused, waste, dups, renewals, toolById };
+}
+
+/* ---------- données ---------- */
+async function loadAll(){
+  S.loading = true; render();
+  const { data:{ session } } = await sb.auth.getSession();
+  S.user = session ? session.user : null;
+  if (!S.user){ S.company = null; S.tools = []; S.accounts = []; S.loading = false; return render(); }
+  const m = await sb.from('members').select('company_id').limit(1);
+  if (m.error){ S.err = 'Erreur de chargement : ' + m.error.message; S.loading = false; return render(); }
+  if (!m.data.length){ S.company = null; S.loading = false; return render(); }
+  const cid = m.data[0].company_id;
+  const [c, sub] = await Promise.all([
+    sb.from('companies').select('id,name').eq('id', cid).single(),
+    sb.from('customer_subscriptions').select('status').eq('company_id', cid).maybeSingle()
+  ]);
+  S.company = c.data;
+  S.access = !!(sub.data && sub.data.status === 'active');
+  if (!S.access){ S.tools = []; S.accounts = []; S.loading = false; return render(); }
+  const [t, a] = await Promise.all([
+    sb.from('tools').select('*').eq('company_id', cid).order('name'),
+    sb.from('accounts').select('*').eq('company_id', cid).order('person_name')
+  ]);
+  if (c.error || t.error || a.error){ S.err = 'Erreur de chargement.'; }
+  S.tools = t.data || []; S.accounts = a.data || [];
+  S.loading = false; render();
+}
+function flash(msg, err){ S.msg = err ? null : msg; S.err = err ? msg : null; }
+
+/* ---------- vues ---------- */
+function viewAuth(){
+  const login = S.mode === 'login';
+  return `<header><span class="brand">Licentrack</span></header>
+  <h1 style="margin-top:24px">${login ? 'Connexion' : 'Créer mon compte'}</h1>
+  <p class="sub">Retrouvez les logiciels que votre entreprise paie pour rien.</p>
+  ${banner()}
+  <form data-form="auth" class="card">
+    <label for="em">Adresse e-mail</label><input id="em" name="email" type="email" required autocomplete="email">
+    <label for="pw">Mot de passe ${login ? '' : '(8 caractères minimum)'}</label><input id="pw" name="password" type="password" required minlength="8" autocomplete="${login ? 'current-password' : 'new-password'}">
+    <p><button class="btn" type="submit" style="width:100%">${login ? 'Se connecter' : 'Créer mon compte'}</button></p>
+    <p class="row" style="justify-content:center"><button type="button" class="btn sec sm" data-act="switch">${login ? 'Pas encore de compte ? Créer un compte' : 'J’ai déjà un compte'}</button></p>
+  </form>`;
+}
+function viewOnboarding(){
+  return `<header><span class="brand">Licentrack</span><button class="btn sec sm" data-act="logout">Se déconnecter</button></header>
+  <h1 style="margin-top:24px">Bienvenue</h1>
+  <p class="sub">Une dernière étape : le nom de votre entreprise.</p>
+  ${banner()}
+  <form data-form="company" class="card">
+    <label for="cn">Nom de l’entreprise</label><input id="cn" name="name" required maxlength="120">
+    <p><button class="btn" type="submit">Continuer</button></p>
+  </form>`;
+}
+function banner(){
+  return (S.msg ? `<div class="msg">${esc(S.msg)}</div>` : '') + (S.err ? `<div class="msg err">${esc(S.err)}</div>` : '');
+}
+function viewMain(){
+  return `<header><div><span class="brand">Licentrack</span><div class="sub">${esc(S.company.name)}</div></div>
+    <button class="btn sec sm" data-act="logout">Se déconnecter</button></header>
+  <nav><button data-tab="dash" class="${S.tab==='dash'?'on':''}">Tableau de bord</button><button data-tab="tools" class="${S.tab==='tools'?'on':''}">Logiciels</button></nav>
+  ${banner()}
+  ${S.tab === 'dash' ? viewDash() : viewTools()}
+  <p class="foot">Licentrack · licentrack.contact@gmail.com</p>`;
+}
+function viewDash(){
+  if (!S.tools.length) return `<div class="card empty"><h3>Commençons</h3><p>Ajoutez votre premier logiciel pour voir ce que votre entreprise paie.</p><button class="btn" data-act="goTools">Ajouter un logiciel</button></div>`;
+  const A = analyse();
+  let h = `<div class="card"><div class="sub">Ce que vous payez en logiciels, par an</div><p class="big">${fmt(A.total)}</p></div>
+  <div class="grid">
+    <div class="stat"><b>${S.tools.length}</b><span>logiciel${S.tools.length>1?'s':''}</span></div>
+    <div class="stat"><b>${A.unused.length}</b><span>compte${A.unused.length>1?'s':''} inutilisé${A.unused.length>1?'s':''}</span></div>
+    <div class="stat"><b>${fmt(A.waste)}</b><span>perdus par an (estimation)</span></div>
+    <div class="stat"><b>${A.dups.length}</b><span>doublon${A.dups.length>1?'s':''} possible${A.dups.length>1?'s':''}</span></div>
+  </div>
+  <h2>À traiter</h2>`;
+  let any = false;
+  A.unused.forEach(a => { any = true; const t = A.toolById[a.tool_id];
+    const why = a.left_company ? 'a quitté l’entreprise' : (a.last_used_at ? 'pas utilisé depuis ' + daysBetween(a.last_used_at) + ' jours' : 'jamais utilisé');
+    h += `<div class="alert o"><b>${esc(a.person_name)}</b> sur ${esc(t.name)} : ${why}. Environ ${fmt(perSeat(t))} par an.</div>`; });
+  A.dups.forEach(g => { any = true;
+    h += `<div class="alert r">Doublon possible : ${g.map(t => esc(t.name)).join(' et ')} (même catégorie : ${esc(g[0].category)}).</div>`; });
+  A.renewals.forEach(r => { any = true;
+    h += `<div class="alert ${r.days <= 14 ? 'r' : 'o'}">${esc(r.t.name)} se renouvelle ${r.days === 0 ? 'aujourd’hui' : 'dans ' + r.days + ' jour' + (r.days>1?'s':'')} (${fmtDate(r.t.renewal_date)}), ${fmt(annual(r.t))} par an.</div>`; });
+  if (!any) h += `<div class="alert ok">Rien à signaler pour le moment.</div>`;
+  h += `<p class="sub">Un compte est « inutilisé » s’il n’a pas servi depuis plus de ${UNUSED_DAYS} jours, ou si la personne a quitté l’entreprise. Les rappels par e-mail avant renouvellement arrivent bientôt.</p>`;
+  return h;
+}
+function toolForm(t){
+  t = t || {};
+  const cats = ['Design','Gestion de projet','Communication','Signature électronique','Comptabilité','CRM','Stockage','Autre'];
+  return `<form data-form="tool" data-id="${esc(t.id || '')}" class="card">
+    <h3>${t.id ? 'Modifier le logiciel' : 'Ajouter un logiciel'}</h3>
+    <label for="tn">Nom</label><input id="tn" name="name" required maxlength="120" value="${esc(t.name)}" placeholder="Ex. Notion">
+    <label for="tc">Catégorie</label><input id="tc" name="category" list="cats" maxlength="80" value="${esc(t.category)}" placeholder="Ex. Gestion de projet">
+    <datalist id="cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    <div class="grid">
+      <div><label for="tp">Prix payé (€)</label><input id="tp" name="price" inputmode="decimal" required value="${t.id ? (t.price_cents/100).toString().replace('.',',') : ''}" placeholder="Ex. 49"></div>
+      <div><label for="tpe">Par</label><select id="tpe" name="period"><option value="monthly" ${t.period==='monthly'||!t.period?'selected':''}>mois</option><option value="yearly" ${t.period==='yearly'?'selected':''}>an</option></select></div>
+    </div>
+    <p class="sub">Indiquez le total payé pour tout le monde, pas par personne.</p>
+    <div class="grid">
+      <div><label for="ts">Nombre de places</label><input id="ts" name="seats" type="number" min="1" required value="${t.seats || 1}"></div>
+      <div><label for="tr">Prochain renouvellement</label><input id="tr" name="renewal" type="date" value="${esc(t.renewal_date || '')}"></div>
+    </div>
+    <p class="row"><button class="btn" type="submit">Enregistrer</button><button class="btn sec" type="button" data-act="cancelTool">Annuler</button></p>
+  </form>`;
+}
+function viewTools(){
+  let h = '';
+  if (S.showToolForm) h += toolForm(S.editTool ? S.tools.find(t => t.id === S.editTool) : null);
+  else h += `<p class="row"><button class="btn" data-act="newTool">Ajouter un logiciel</button><button class="btn sec" data-act="showImport">Importer un fichier</button></p>`;
+  if (S.showImport) h += `<div class="card"><h3>Importer une liste de logiciels</h3>
+    <p class="sub">Un fichier CSV (exportable depuis Excel ou Google Sheets) avec les colonnes : nom, catégorie, prix, période (mois ou an), places, renouvellement. Le prix est le total payé pour tout le monde.</p>
+    <p><button class="btn sec sm" data-act="template">Télécharger le modèle</button></p>
+    <label for="csvfile">Votre fichier</label><input id="csvfile" type="file" accept=".csv,text/csv,text/plain">
+    <p><button class="btn sec" data-act="cancelImport">Fermer</button></p></div>`;
+  if (!S.tools.length && !S.showToolForm) h += `<div class="card empty">Aucun logiciel pour le moment.</div>`;
+  const A = analyse();
+  S.tools.forEach(t => {
+    const accs = S.accounts.filter(a => a.tool_id === t.id);
+    const dup = A.dups.some(g => g.some(x => x.id === t.id));
+    h += `<div class="card"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(t.name)}${dup ? '<span class="pill r">doublon ?</span>' : ''}</h3><b>${fmt(annual(t))}/an</b></div>
+      <div class="sub">${esc(t.category || 'Sans catégorie')} · ${fmt(t.price_cents, 2)} par ${t.period==='yearly'?'an':'mois'} · ${t.seats} place${t.seats>1?'s':''} · ${fmt(perSeat(t))} par place et par an · renouvellement : ${fmtDate(t.renewal_date)}</div>
+      <p class="row"><button class="btn sec sm" data-act="editTool" data-id="${t.id}">Modifier</button><button class="btn danger sm" data-act="delTool" data-id="${t.id}">Supprimer</button></p>
+      <details><summary>Comptes (${accs.length})</summary>
+      ${accs.map(a => `<div class="acc"><div><b>${esc(a.person_name)}</b>${isUnused(a) ? '<span class="pill o">inutilisé</span>' : ''}<div class="sub">${esc(a.email || '')} · dernière utilisation : ${fmtDate(a.last_used_at)}${a.left_company ? ' · a quitté l’entreprise' : ''}</div></div>
+        <div class="row"><button class="btn sec sm" data-act="toggleLeft" data-id="${a.id}">${a.left_company ? 'Est revenu' : 'A quitté'}</button><button class="btn danger sm" data-act="delAcc" data-id="${a.id}">Retirer</button></div></div>`).join('')}
+      <form data-form="account" data-tool="${t.id}">
+        <label>Nom de la personne</label><input name="person" required maxlength="120">
+        <label>E-mail (facultatif)</label><input name="email" type="email" maxlength="200">
+        <label>Dernière utilisation (facultatif)</label><input name="last" type="date">
+        <p><button class="btn sm" type="submit">Ajouter ce compte</button></p>
+      </form></details></div>`;
+  });
+  return h;
+}
+function viewPaywall(){
+  return `<header><div><span class="brand">Licentrack</span><div class="sub">${esc(S.company.name)}</div></div>
+    <button class="btn sec sm" data-act="logout">Se déconnecter</button></header>
+  <h1 style="margin-top:24px">Votre accès n’est pas encore activé</h1>
+  <div class="card"><p>Votre compte est bien créé. L’accès à Licentrack est activé dès que votre paiement est confirmé.</p>
+  <p>Vous avez déjà précommandé ? Écrivez-nous à <b>licentrack.contact@gmail.com</b> avec l’adresse e-mail de votre compte, nous activons votre accès.</p>
+  <p><a class="btn" href="${STRIPE_LINK}">Précommander pour 79 €</a></p></div>
+  <p class="foot">Licentrack · licentrack.contact@gmail.com</p>`;
+}
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+function parseCSV(text){
+  text = text.replace(/^﻿/, '');
+  const first = text.split(/\r?\n/)[0] || '';
+  const sep = first.split(';').length > first.split(',').length ? ';' : ',';
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if (q){ if (ch === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === sep){ row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r'){ if (ch === '\r' && text[i+1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur !== '' || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ''));
+}
+async function importFile(file){
+  S.msg = S.err = null;
+  const rows = parseCSV(await file.text());
+  if (rows.length < 2){ flash('Fichier vide ou illisible.', true); return render(); }
+  const head = rows[0].map(norm);
+  const find = re => head.findIndex(h => re.test(h));
+  const ix = { name: find(/^(nom|name|logiciel|outil|application)/), cat: find(/^(categorie|category|type)/),
+    price: find(/^(prix|price|montant|cout)/), per: find(/^(periode|par$|frequence|periodicite)/),
+    seats: find(/^(places|licences|utilisateurs|seats|nombre)/), ren: find(/^(renouvellement|date)/) };
+  if (ix.name < 0 || ix.price < 0){ flash('Colonnes « nom » et « prix » introuvables. Téléchargez le modèle et suivez ses colonnes.', true); return render(); }
+  const out = []; let skipped = 0;
+  rows.slice(1, 501).forEach(r => {
+    const name = (r[ix.name] || '').trim();
+    const price = parseFloat(String(r[ix.price] || '').replace(/[^\d,.\-]/g, '').replace(',', '.'));
+    if (!name || !(price >= 0)){ skipped++; return; }
+    const per = ix.per >= 0 ? norm(r[ix.per]) : 'mois';
+    const seats = ix.seats >= 0 ? parseInt(r[ix.seats], 10) : 1;
+    let ren = ix.ren >= 0 ? (r[ix.ren] || '').trim() : '';
+    const m = ren.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) ren = m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ren) || isNaN(new Date(ren))) ren = null;
+    out.push({ company_id: S.company.id, name: name.slice(0, 120), category: (ix.cat >= 0 ? (r[ix.cat] || '').trim().slice(0, 80) : '') || null,
+      price_cents: Math.round(price * 100), period: /^(an|annuel|annee|year|annual)/.test(per) ? 'yearly' : 'monthly',
+      seats: seats >= 1 ? seats : 1, renewal_date: ren });
+  });
+  if (!out.length){ flash('Aucune ligne valide trouvée dans ce fichier.', true); return render(); }
+  const res = await sb.from('tools').insert(out);
+  if (res.error){ flash('Import impossible : ' + res.error.message, true); return render(); }
+  S.showImport = false;
+  flash(out.length + ' logiciel' + (out.length > 1 ? 's' : '') + ' importé' + (out.length > 1 ? 's' : '') + (skipped ? '. ' + skipped + ' ligne(s) ignorée(s).' : '.'));
+  loadAll();
+}
+function downloadTemplate(){
+  const csv = '﻿nom;catégorie;prix;période;places;renouvellement\r\nNotion;Gestion de projet;49;mois;5;2027-01-15\r\nCanva;Design;120;an;3;2027-03-01\r\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'modele-licentrack.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+function render(){
+  if (S.loading) { app.innerHTML = '<p class="empty">Chargement…</p>'; return; }
+  app.innerHTML = !S.user ? viewAuth() : !S.company ? viewOnboarding() : !S.access ? viewPaywall() : viewMain();
+}
+
+/* ---------- actions ---------- */
+app.addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.target, kind = f.dataset.form, d = new FormData(f);
+  S.msg = S.err = null;
+  if (kind === 'auth'){
+    const email = d.get('email').trim(), password = d.get('password');
+    if (S.mode === 'login'){
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error){ flash('Connexion impossible : e-mail ou mot de passe incorrect.', true); return render(); }
+      return loadAll();
+    }
+    const { data, error } = await sb.auth.signUp({ email, password, options:{ emailRedirectTo: location.origin + '/app' } });
+    if (error){ flash('Création impossible : ' + error.message, true); return render(); }
+    if (!data.session){ flash('Compte créé. Ouvrez l’e-mail de confirmation que nous venons de vous envoyer, puis revenez vous connecter.'); S.mode = 'login'; return render(); }
+    return loadAll();
+  }
+  if (kind === 'company'){
+    const { error } = await sb.rpc('create_company', { company_name: d.get('name').trim() });
+    if (error){ flash('Création impossible : ' + error.message, true); return render(); }
+    return loadAll();
+  }
+  if (kind === 'tool'){
+    const price = Math.round(parseFloat(String(d.get('price')).replace(',', '.')) * 100);
+    const seats = parseInt(d.get('seats'), 10);
+    if (!(price >= 0) || !(seats >= 1)){ flash('Vérifiez le prix et le nombre de places.', true); return render(); }
+    const row = { name: d.get('name').trim(), category: d.get('category').trim() || null, price_cents: price,
+      period: d.get('period'), seats, renewal_date: d.get('renewal') || null };
+    const id = f.dataset.id;
+    const r = id ? await sb.from('tools').update(row).eq('id', id) : await sb.from('tools').insert({ ...row, company_id: S.company.id });
+    if (r.error){ flash('Enregistrement impossible : ' + r.error.message, true); return render(); }
+    S.showToolForm = false; S.editTool = null; flash('Logiciel enregistré.');
+    return loadAll();
+  }
+  if (kind === 'account'){
+    const r = await sb.from('accounts').insert({ tool_id: f.dataset.tool, company_id: S.company.id,
+      person_name: d.get('person').trim(), email: d.get('email').trim() || null, last_used_at: d.get('last') || null });
+    if (r.error){ flash('Ajout impossible : ' + r.error.message, true); return render(); }
+    flash('Compte ajouté.'); return loadAll();
+  }
+});
+app.addEventListener('click', async e => {
+  const tabBtn = e.target.closest('[data-tab]');
+  if (tabBtn){ S.tab = tabBtn.dataset.tab; S.msg = S.err = null; return render(); }
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, id = b.dataset.id; S.msg = S.err = null;
+  if (act === 'switch'){ S.mode = S.mode === 'login' ? 'signup' : 'login'; return render(); }
+  if (act === 'logout'){ await sb.auth.signOut(); S.user = null; S.company = null; return render(); }
+  if (act === 'goTools'){ S.tab = 'tools'; S.showToolForm = true; S.editTool = null; return render(); }
+  if (act === 'newTool'){ S.showToolForm = true; S.editTool = null; S.showImport = false; return render(); }
+  if (act === 'showImport'){ S.showImport = true; S.showToolForm = false; return render(); }
+  if (act === 'cancelImport'){ S.showImport = false; return render(); }
+  if (act === 'template'){ return downloadTemplate(); }
+  if (act === 'editTool'){ S.showToolForm = true; S.editTool = id; return render(); }
+  if (act === 'cancelTool'){ S.showToolForm = false; S.editTool = null; return render(); }
+  if (act === 'delTool'){
+    if (!confirm('Supprimer ce logiciel et tous ses comptes ?')) return;
+    const r = await sb.from('tools').delete().eq('id', id); if (r.error) flash('Suppression impossible.', true); else flash('Logiciel supprimé.');
+    return loadAll();
+  }
+  if (act === 'delAcc'){
+    if (!confirm('Retirer ce compte ?')) return;
+    const r = await sb.from('accounts').delete().eq('id', id); if (r.error) flash('Suppression impossible.', true);
+    return loadAll();
+  }
+  if (act === 'toggleLeft'){
+    const a = S.accounts.find(x => x.id === id);
+    const r = await sb.from('accounts').update({ left_company: !a.left_company }).eq('id', id); if (r.error) flash('Modification impossible.', true);
+    return loadAll();
+  }
+});
+app.addEventListener('change', e => { if (e.target.id === 'csvfile' && e.target.files[0]) importFile(e.target.files[0]); });
+sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') { S.user = null; S.company = null; render(); } });
+loadAll();
+</script>
+</body>
+</html>
